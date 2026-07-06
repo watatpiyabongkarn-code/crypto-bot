@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>v14 Portfolio Terminal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2333; --border:#30363d;
+    --fg:#c9d1d9; --muted:#8b949e; --green:#2ea043; --red:#f85149;
+    --blue:#388bfd; --amber:#d29922; --purple:#a371f7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px}
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+         padding:14px 20px;border-bottom:1px solid var(--border);background:var(--panel)}
+  header h1{font-size:18px;margin:0;font-weight:600}
+  header .updated{color:var(--muted);font-size:12px}
+  .wrap{max-width:1200px;margin:0 auto;padding:16px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .card .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .card .value{font-size:22px;font-weight:600;margin-top:4px}
+  .card .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--muted)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 10px}
+  .tab{padding:7px 14px;border:1px solid var(--border);border-radius:20px;cursor:pointer;
+       background:var(--panel);color:var(--muted);font-size:13px;user-select:none}
+  .tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+  .panel h2{font-size:15px;margin:0 0 12px;font-weight:600}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  canvas{max-width:100%}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:500;cursor:pointer;user-select:none;font-size:12px}
+  th:hover{color:var(--fg)}
+  tbody tr:hover{background:var(--panel2)}
+  .tag{padding:2px 7px;border-radius:5px;font-size:11px;font-weight:600}
+  .tag.long{background:rgba(46,160,67,.18);color:var(--green)}
+  .tag.short{background:rgba(248,81,73,.18);color:var(--red)}
+  .metricgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .metric{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)}
+  .metric .k{color:var(--muted)} .metric .v{font-weight:600}
+  .hidden{display:none}
+  .footer{color:var(--muted);font-size:12px;text-align:center;padding:20px}
+  .warn{background:rgba(210,153,34,.12);border:1px solid var(--amber);color:var(--amber);
+        border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px}
+  .trends{display:flex;flex-wrap:wrap;gap:6px}
+  .trend{padding:4px 9px;border-radius:6px;font-size:12px;font-weight:600}
+  .trend.bull{background:rgba(46,160,67,.15);color:var(--green)}
+  .trend.bear{background:rgba(248,81,73,.15);color:var(--red)}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>📊 v14 Portfolio Terminal</h1><div class="updated" id="updated">loading…</div></div>
+  <div id="headline"></div>
+</header>
+
+<div class="wrap">
+  <div id="corrWarn"></div>
+  <div class="cards" id="cards"></div>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-t="overview">Overview</div>
+    <div class="tab" data-t="performance">Performance</div>
+    <div class="tab" data-t="risk">Risk</div>
+    <div class="tab" data-t="positions">Positions</div>
+    <div class="tab" data-t="trades">Trades</div>
+    <div class="tab" data-t="coins">By Coin</div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="tabview" data-v="overview">
+    <div class="panel"><h2>Equity Curve</h2><canvas id="eqChart" height="110"></canvas></div>
+    <div class="grid2">
+      <div class="panel"><h2>Drawdown %</h2><canvas id="ddChart" height="150"></canvas></div>
+      <div class="panel"><h2>Allocation</h2><canvas id="allocChart" height="150"></canvas></div>
+    </div>
+    <div class="panel"><h2>Market</h2><div class="trends" id="trends"></div></div>
+  </div>
+
+  <!-- PERFORMANCE -->
+  <div class="tabview hidden" data-v="performance">
+    <div class="panel"><h2>Performance Metrics</h2><div class="metricgrid" id="perfMetrics"></div></div>
+    <div class="grid2">
+      <div class="panel"><h2>Monthly Returns %</h2><canvas id="monthlyChart" height="150"></canvas></div>
+      <div class="panel"><h2>Rolling Win Rate %</h2><canvas id="rollChart" height="150"></canvas></div>
+    </div>
+  </div>
+
+  <!-- RISK -->
+  <div class="tabview hidden" data-v="risk">
+    <div class="panel"><h2>Risk Dashboard</h2><div class="metricgrid" id="riskMetrics"></div></div>
+  </div>
+
+  <!-- POSITIONS -->
+  <div class="tabview hidden" data-v="positions">
+    <div class="panel"><h2>Open Positions</h2>
+      <table id="posTable"><thead><tr>
+        <th data-k="coin">Coin</th><th data-k="side">Side</th><th data-k="entry">Entry</th>
+        <th data-k="price">Price</th><th data-k="stop">Stop</th><th data-k="upct">PnL %</th>
+        <th data-k="upnl">PnL $</th><th data-k="r_now">R</th><th data-k="notional">Value</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- TRADES -->
+  <div class="tabview hidden" data-v="trades">
+    <div class="panel"><h2>Trade History</h2>
+      <table id="tradeTable"><thead><tr>
+        <th data-k="exit_ts">Exit</th><th data-k="coin">Coin</th><th data-k="direction">Side</th>
+        <th data-k="reason">Reason</th><th data-k="duration_h">Hrs</th>
+        <th data-k="move_pct">Move %</th><th data-k="r_multiple">R</th><th data-k="pnl">PnL $</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <!-- COINS -->
+  <div class="tabview hidden" data-v="coins">
+    <div class="grid2">
+      <div class="panel"><h2>Profit by Coin $</h2><canvas id="coinPnlChart" height="170"></canvas></div>
+      <div class="panel"><h2>Win Rate by Coin %</h2><canvas id="coinWrChart" height="170"></canvas></div>
+    </div>
+    <div class="panel"><h2>Per-Coin Stats</h2>
+      <table id="coinTable"><thead><tr>
+        <th data-k="coin">Coin</th><th data-k="trades">Trades</th><th data-k="win_rate">Win %</th>
+        <th data-k="pnl">PnL $</th><th data-k="avg_move">Avg Move %</th><th data-k="avg_r">Avg R</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="footer">v14 paper trading · data refreshed daily by GitHub Actions · not financial advice</div>
+</div>
+
+<script>
+const C={bg:'#0d1117',fg:'#c9d1d9',grid:'#30363d',green:'#2ea043',red:'#f85149',blue:'#388bfd',
+        amber:'#d29922',purple:'#a371f7',muted:'#8b949e'};
+Chart.defaults.color=C.muted; Chart.defaults.borderColor=C.grid; Chart.defaults.font.size=11;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const money=(v,sign)=>v==null?'n/a':(sign?(v>=0?'+':'-'):(v<0?'-':''))+'$'+Math.abs(v).toLocaleString(undefined,{maximumFractionDigits:0});
+const pct=(v,mul=1)=>v==null?'n/a':(v>=0?'+':'')+(v*mul).toFixed(1)+'%';
+const ratio=v=>v==null?'n/a':(+v).toFixed(2);
+const cls=v=>v==null?'mut':(v>=0?'pos':'neg');
+const price=v=>{if(v==null)return'n/a';const a=Math.abs(v);
+  return a>=1000?v.toLocaleString(undefined,{maximumFractionDigits:0}):a>=1?v.toFixed(2):a>=0.01?v.toFixed(4):v.toFixed(6);};
+
+let DATA=null;
+const charts={};
+
+function card(label,value,valClass,sub){
+  return `<div class="card"><div class="label">${label}</div>
+    <div class="value ${valClass||''}">${value}</div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;
+}
+
+function render(){
+  const p=DATA.portfolio, t=DATA.trading, r=DATA.risk;
+  $('#updated').textContent='Updated '+new Date(DATA.updated).toLocaleString()+' · UTC daily';
+  $('#headline').innerHTML=`<div class="value ${cls(p.total_return)}" style="font-size:20px;font-weight:700">
+     ${money(p.equity)} <span style="font-size:14px">(${pct(p.total_return,100)})</span></div>`;
+
+  // cards
+  $('#cards').innerHTML=[
+    card('Equity',money(p.equity),cls(p.total_return),pct(p.total_return,100)+' all-time'),
+    card("Today's PnL",money(p.today_pnl,true),cls(p.today_pnl)),
+    card('Weekly',pct(p.weekly_return,100),cls(p.weekly_return)),
+    card('Monthly',pct(p.monthly_return,100),cls(p.monthly_return)),
+    card('Open',r.n_positions,'', 'risk '+(r.portfolio_risk_pct!=null?r.portfolio_risk_pct.toFixed(1)+'%':'n/a')),
+    card('Cash',money(r.cash),'', (r.cash_pct!=null?r.cash_pct.toFixed(0)+'%':'')),
+    card('Max DD',pct(p.max_dd,100),'neg','cur '+pct(p.current_dd,100)),
+    card('Sharpe',ratio(p.sharpe),'', 'wk-sampled'),
+  ].join('');
+
+  // correlation warning
+  $('#corrWarn').innerHTML = r.correlation_warning ? `<div class="warn">⚠️ ${r.correlation_warning}</div>` : '';
+
+  // trends
+  $('#trends').innerHTML=Object.entries(DATA.trends).map(([k,v])=>
+    `<span class="trend ${v==='BULL'?'bull':'bear'}">${v==='BULL'?'🟢':'🔴'} ${k}</span>`).join('')||'<span class="mut">n/a</span>';
+
+  renderCharts();
+  renderPerf(); renderRisk(); renderPositions(); renderTrades(); renderCoins();
+}
+
+function lineChart(id,series,color,fill,pctAxis){
+  const el=document.getElementById(id); if(!el||!series.length)return;
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(el,{type:'line',data:{labels:series.map(s=>s[0]),
+    datasets:[{data:series.map(s=>s[1]),borderColor:color,backgroundColor:color+'22',
+      fill:fill,tension:.15,pointRadius:0,borderWidth:1.8}]},
+    options:{responsive:true,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:c=>(pctAxis?c.parsed.y.toFixed(1)+'%':'$'+c.parsed.y.toLocaleString())}}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:8}},
+              y:{grid:{color:C.grid+'55'},ticks:{callback:v=>pctAxis?v+'%':'$'+v.toLocaleString()}}}}});
+}
+function barChart(id,labels,vals,pctAxis){
+  const el=document.getElementById(id); if(!el||!vals.length)return;
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(el,{type:'bar',data:{labels,datasets:[{data:vals,
+    backgroundColor:vals.map(v=>v>=0?C.green:C.red)}]},
+    options:{responsive:true,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false}},y:{grid:{color:C.grid+'55'},
+        ticks:{callback:v=>pctAxis?v+'%':'$'+v}}}}});
+}
+
+function renderCharts(){
+  lineChart('eqChart',DATA.series.equity,C.green,true,false);
+  lineChart('ddChart',DATA.series.drawdown,C.red,true,true);
+  // allocation doughnut
+  const al=Object.entries(DATA.allocation).filter(([k,v])=>v>0.5);
+  const el=$('#allocChart');
+  if(charts.alloc)charts.alloc.destroy();
+  const pal=[C.blue,C.green,C.amber,C.red,C.purple,'#f778ba','#3fb950','#db6d28'];
+  charts.alloc=new Chart(el,{type:'doughnut',data:{labels:al.map(x=>x[0]),
+    datasets:[{data:al.map(x=>x[1]),backgroundColor:al.map(([k],i)=>k==='Cash'?C.muted:pal[i%pal.length]),
+      borderColor:C.bg,borderWidth:2}]},
+    options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:12}},
+      tooltip:{callbacks:{label:c=>c.label+' '+c.parsed.toFixed(0)+'%'}}}}});
+}
+
+function renderPerf(){
+  const p=DATA.portfolio,t=DATA.trading;
+  const rows=[
+    ['Total Return',pct(p.total_return,100)],['CAGR',pct(p.cagr,100)],
+    ['Volatility',p.volatility!=null?(p.volatility*100).toFixed(0)+'%':'n/a'],
+    ['Sharpe',ratio(p.sharpe)],['Sortino',ratio(p.sortino)],['Calmar',ratio(p.calmar)],
+    ['Recovery Factor',ratio(p.recovery_factor)],['Profit Factor',ratio(t.profit_factor)],
+    ['Max Drawdown',pct(p.max_dd,100)],['Current DD',pct(p.current_dd,100)],['Avg DD',pct(p.avg_dd,100)],
+    ['ATH',money(p.ath)],['Equity Low',money(p.equity_low)],
+    ['Win Rate',t.win_rate!=null?(t.win_rate*100).toFixed(0)+'%':'n/a'],['Avg R',ratio(t.avg_r)],
+    ['Expectancy',money(t.expectancy,true)],['Avg Win',money(t.avg_win,true)],['Avg Loss',money(t.avg_loss,true)],
+    ['Largest Win',money(t.largest_win,true)],['Largest Loss',money(t.largest_loss,true)],
+    ['Avg Hold',t.avg_hold_h!=null?t.avg_hold_h.toFixed(0)+'h':'n/a'],
+    ['Closed Trades',t.total_closed],['Open Trades',t.total_open],
+    ['Best Run',t.consec_wins],['Worst Run',t.consec_losses],['Current Streak',(t.current_streak>0?'+':'')+t.current_streak],
+  ];
+  $('#perfMetrics').innerHTML=rows.map(([k,v])=>`<div class="metric"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+  barChart('monthlyChart',DATA.series.monthly.map(s=>s[0].slice(0,7)),DATA.series.monthly.map(s=>s[1]),true);
+  lineChart('rollChart',DATA.series.rolling_winrate,C.blue,false,true);
+}
+
+function renderRisk(){
+  const r=DATA.risk;
+  const rows=[
+    ['Exposure',r.exposure_pct!=null?r.exposure_pct.toFixed(0)+'%':'n/a'],
+    ['Cash',r.cash_pct!=null?r.cash_pct.toFixed(0)+'%':'n/a'],
+    ['Portfolio Risk',r.portfolio_risk_pct!=null?r.portfolio_risk_pct.toFixed(1)+'%':'n/a'],
+    ['Risk / Trade',r.risk_per_trade_pct!=null?r.risk_per_trade_pct.toFixed(2)+'%':'n/a'],
+    ['Positions',r.n_positions],
+    ['Largest Position',r.largest_position_pct!=null?r.largest_position_pct.toFixed(1)+'%':'n/a'],
+    ['Avg Position',r.avg_position_pct!=null?r.avg_position_pct.toFixed(1)+'%':'n/a'],
+    ['Concentration',r.position_concentration!=null?r.position_concentration.toFixed(2):'n/a'],
+    ['Portfolio Beta','n/a'],
+  ];
+  $('#riskMetrics').innerHTML=rows.map(([k,v])=>`<div class="metric"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('');
+}
+
+let posSort={k:'notional',dir:-1}, tradeSort={k:'exit_ts',dir:-1}, coinSort={k:'pnl',dir:-1};
+function sortRows(rows,st){return [...rows].sort((a,b)=>{
+  let x=a[st.k],y=b[st.k]; if(x==null)x=-Infinity; if(y==null)y=-Infinity;
+  if(typeof x==='string')return st.dir*x.localeCompare(y);
+  return st.dir*(x-y);});}
+
+function renderPositions(){
+  const rows=sortRows(DATA.positions,posSort);
+  $('#posTable tbody').innerHTML=rows.map(p=>`<tr>
+    <td>${p.coin}</td><td><span class="tag ${p.side.toLowerCase()}">${p.side}</span></td>
+    <td>${price(p.entry)}</td><td>${price(p.price)}</td><td>${price(p.stop)}</td>
+    <td class="${cls(p.upct)}">${p.upct>=0?'+':''}${p.upct.toFixed(1)}%</td>
+    <td class="${cls(p.upnl)}">${money(p.upnl,true)}</td>
+    <td class="${cls(p.r_now)}">${p.r_now!=null?(p.r_now>=0?'+':'')+p.r_now.toFixed(1):'—'}</td>
+    <td>${money(p.notional)}</td></tr>`).join('')||'<tr><td colspan="9" class="mut">no open positions</td></tr>';
+}
+function renderTrades(){
+  const rows=sortRows(DATA.trades,tradeSort).slice(0,200);
+  $('#tradeTable tbody').innerHTML=rows.map(t=>`<tr>
+    <td>${(t.exit_ts||'').slice(0,10)}</td><td>${t.coin}</td>
+    <td><span class="tag ${t.direction}">${t.direction[0].toUpperCase()}</span></td>
+    <td class="mut">${t.reason}</td><td>${t.duration_h!=null?t.duration_h.toFixed(0):'—'}</td>
+    <td class="${cls(t.move_pct)}">${t.move_pct!=null?(t.move_pct>=0?'+':'')+t.move_pct.toFixed(1)+'%':'—'}</td>
+    <td class="${cls(t.r_multiple)}">${t.r_multiple!=null?(t.r_multiple>=0?'+':'')+t.r_multiple.toFixed(1):'—'}</td>
+    <td class="${cls(t.pnl)}">${money(t.pnl,true)}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">no closed trades</td></tr>';
+}
+function renderCoins(){
+  const pc=DATA.per_coin, coins=Object.keys(pc);
+  const arr=coins.map(c=>({coin:c,...pc[c]}));
+  const sorted=sortRows(arr,coinSort);
+  $('#coinTable tbody').innerHTML=sorted.map(c=>`<tr>
+    <td>${c.coin}</td><td>${c.trades}</td><td>${c.win_rate!=null?c.win_rate.toFixed(0)+'%':'—'}</td>
+    <td class="${cls(c.pnl)}">${money(c.pnl,true)}</td>
+    <td class="${cls(c.avg_move)}">${c.avg_move!=null?(c.avg_move>=0?'+':'')+c.avg_move.toFixed(1)+'%':'—'}</td>
+    <td class="${cls(c.avg_r)}">${c.avg_r!=null?(c.avg_r>=0?'+':'')+c.avg_r.toFixed(2):'—'}</td></tr>`).join('');
+  const byPnl=[...arr].sort((a,b)=>b.pnl-a.pnl);
+  barChart('coinPnlChart',byPnl.map(c=>c.coin),byPnl.map(c=>c.pnl),false);
+  barChart('coinWrChart',arr.map(c=>c.coin),arr.map(c=>c.win_rate||0),true);
+}
+
+// tab switching
+$$('.tab').forEach(tab=>tab.onclick=()=>{
+  $$('.tab').forEach(t=>t.classList.remove('active')); tab.classList.add('active');
+  const v=tab.dataset.t;
+  $$('.tabview').forEach(tv=>tv.classList.toggle('hidden',tv.dataset.v!==v));
+});
+// column sorting
+function wireSort(tableId,st,rerender){
+  $$(`#${tableId} th`).forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k; if(!k)return;
+    if(st.k===k)st.dir*=-1; else{st.k=k;st.dir=-1;} rerender();});
+}
+
+fetch('data.json?_='+Date.now()).then(r=>r.json()).then(d=>{
+  DATA=d; render();
+  wireSort('posTable',posSort,renderPositions);
+  wireSort('tradeTable',tradeSort,renderTrades);
+  wireSort('coinTable',coinSort,renderCoins);
+}).catch(e=>{
+  document.querySelector('.wrap').innerHTML='<div class="warn">Could not load data.json — has the daily workflow run yet?<br>'+e+'</div>';
+});
+</script>
+</body>
+</html>

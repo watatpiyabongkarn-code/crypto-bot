@@ -29,6 +29,20 @@ WEB_DIR = os.environ.get('WEB_DIR', 'web')
 DASHBOARD_URL = os.environ.get('DASHBOARD_URL', '')
 
 
+import math
+
+def _clean_json(o):
+    """Recursively replace NaN/Infinity with None so JSON is valid for browsers
+    (Python json writes bare NaN which JavaScript JSON.parse rejects)."""
+    if isinstance(o, float):
+        return None if (math.isnan(o) or math.isinf(o)) else o
+    if isinstance(o, dict):
+        return {k: _clean_json(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_clean_json(v) for v in o]
+    return o
+
+
 def build_dashboard_data(state, rep=None, prices=None) -> dict:
     """Everything the static dashboard needs, precomputed server-side so the
     browser only has to render (fast, works offline, no API keys client-side)."""
@@ -49,7 +63,7 @@ def build_dashboard_data(state, rep=None, prices=None) -> dict:
     def ser(s):
         return [[d.strftime('%Y-%m-%d'), round(float(v), 4)] for d, v in s.items()] if len(s) else []
 
-    return dict(
+    _d = dict(
         updated=datetime.now(timezone.utc).isoformat(),
         account_start=state.get('account_start', 10000),
         portfolio=pm, trading=tm, risk=rm,
@@ -66,6 +80,7 @@ def build_dashboard_data(state, rep=None, prices=None) -> dict:
         trends=(rep or {}).get('trends', {}),
         prices={c: round(prices.get(c), 6) for c in strategy.COINS if c in prices},
     )
+    return _clean_json(_d)
 
 
 def main():
@@ -92,7 +107,7 @@ def main():
     os.makedirs(WEB_DIR, exist_ok=True)
     data = build_dashboard_data(state, rep, prices)
     with open(os.path.join(WEB_DIR, 'data.json'), 'w') as f:
-        json.dump(data, f, indent=1, default=str)
+        json.dump(data, f, indent=1, allow_nan=False, default=str)
     print(f"[runner] wrote {WEB_DIR}/data.json ({len(data['trades'])} trades, "
           f"{len(data['series']['equity'])} equity points)")
 

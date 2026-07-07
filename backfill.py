@@ -74,7 +74,7 @@ def run(days: int, account: float, state_path: str = 'state.json',
     else:
         for c in strategy.COINS:
             print(f'  fetching {c} …', flush=True)
-            raw[c] = fetch_daily_history(f'{c}/USDT', days)
+            raw[c] = fetch_daily_history(c, days)
 
     end = min(df.index[-1] for df in raw.values())
     start = end - pd.Timedelta(days=days)

@@ -346,6 +346,14 @@ def rank_metrics(state) -> dict:
     df['exit_dt'] = pd.to_datetime(df['exit_ts'], utc=True, errors='coerce')
     tot = df['pnl'].sum()
     cap = df.groupby('rk')['risk_usd'].sum().sum()
+    open_by_rank = {}
+    for p in state.get('positions', {}).values():
+        rk = p.get('rank')
+        if rk is None:
+            continue
+        rk = min(int(rk), 3)
+        upnl = p['dir'] * (p.get('last_px', p['entry']) - p['entry']) * p['size'] + p.get('partial_pnl', 0.0)
+        open_by_rank[rk] = open_by_rank.get(rk, 0.0) + upnl
     for rk, g in df.groupby('rk'):
         out['by_rank'].append(dict(
             rank=int(rk) + 1,
@@ -354,6 +362,7 @@ def rank_metrics(state) -> dict:
             avg_R=round(float(g['R'].mean()), 3) if g['R'].notna().any() else None,
             total_pnl=round(float(g['pnl'].sum()), 2),
             pnl_share=round(float(g['pnl'].sum()) / tot * 100, 1) if tot else None,
+            open_pnl=round(open_by_rank.get(int(rk), 0.0), 2),
             capital_share=round(float(g['risk_usd'].sum()) / cap * 100, 1) if cap else None))
     for win, lbl in [(90, '3m'), (180, '6m')]:
         cutoff = df['exit_dt'].max() - pd.Timedelta(days=win)

@@ -23,26 +23,43 @@ import pandas as pd
 import strategy
 
 
-def fetch_daily_history(symbol: str, days: int) -> pd.DataFrame:
-    """Paginated daily OHLC back `days`+buffer from now (handles >1000 candles)."""
+def fetch_daily_history(symbol_base: str, days: int):
+    """Paginated daily OHLC with exchange fallback (Binance 451-blocks GitHub IPs)."""
     import ccxt
-    ex = ccxt.binance({'enableRateLimit': True})
-    need = days + 220                       # buffer for indicator warmup + weekly grid
-    since = ex.milliseconds() - need * 86_400_000
-    rows, cursor = [], since
-    while True:
-        batch = ex.fetch_ohlcv(symbol, '1d', since=cursor, limit=1000)
-        if not batch:
-            break
-        rows += batch
-        if len(batch) < 1000:
-            break
-        cursor = batch[-1][0] + 1
-        time.sleep(ex.rateLimit / 1000)
-    df = pd.DataFrame(rows, columns=['ts', 'open', 'high', 'low', 'close', 'volume'])
-    df['ts'] = pd.to_datetime(df['ts'], unit='ms', utc=True)
-    df = df.set_index('ts')[['open', 'high', 'low', 'close']].astype(float)
-    return df[~df.index.duplicated(keep='last')]
+    need = days + 220
+    for name in ['binance', 'kucoin', 'okx', 'bybit', 'coinbase']:
+        try:
+            ex = getattr(ccxt, name)({'enableRateLimit': True})
+        except Exception:
+            continue
+        for quote in ('USDT', 'USD'):
+            sym = f'{symbol_base}/{quote}'
+            try:
+                since = ex.milliseconds() - need * 86_400_000
+                rows, cursor, last = [], since, None
+                while True:
+                    batch = ex.fetch_ohlcv(sym, '1d', since=cursor, limit=1000)
+                    if not batch:
+                        break
+                    rows += batch
+                    nl = batch[-1][0]
+                    if last is not None and nl <= last:
+                        break
+                    last = nl
+                    cursor = nl + 86_400_000
+                    if nl >= ex.milliseconds() - 86_400_000:
+                        break
+                    time.sleep(ex.rateLimit / 1000)
+                if len(rows) >= 100:
+                    df = pd.DataFrame(rows, columns=['ts', 'open', 'high', 'low', 'close', 'volume'])
+                    df['ts'] = pd.to_datetime(df['ts'], unit='ms', utc=True)
+                    df = df.set_index('ts')[['open', 'high', 'low', 'close']].astype(float)
+                    df = df[~df.index.duplicated(keep='last')]
+                    print(f'    {symbol_base}: {len(df)} candles from {name}', flush=True)
+                    return df
+            except Exception:
+                continue
+    raise RuntimeError(f'no exchange served {symbol_base}')
 
 
 def run(days: int, account: float, state_path: str = 'state.json',
@@ -96,13 +113,13 @@ if __name__ == '__main__':
     # refresh dashboard artifacts
     try:
         import runner
-        os.makedirs('web', exist_ok=True)
+        wd=os.environ.get('WEB_DIR','web'); os.makedirs(wd, exist_ok=True)
         data = runner.build_dashboard_data(state)
-        json.dump(data, open('web/data.json', 'w'), indent=1, default=str)
+        json.dump(runner._clean_json(data), open(os.path.join(wd,'data.json'),'w'), indent=1, allow_nan=False, default=str)
         import charts
         buf = charts.equity_curve(state)
         if buf:
-            open('web/equity.png', 'wb').write(buf.getvalue())
+            open(os.path.join(wd,'equity.png'), 'wb').write(buf.getvalue())
         print('Refreshed web/data.json + web/equity.png')
     except Exception as e:
         print('(dashboard refresh skipped:', e, ')')

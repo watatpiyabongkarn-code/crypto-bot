@@ -146,7 +146,7 @@
       <div id="rankEmpty" class="hidden" style="color:var(--muted);padding:10px">
         No rank-tagged trades yet &mdash; this begins collecting from the next closed trade.</div>
       <table id="rankTable"><thead><tr>
-        <th>Rank</th><th>Trades</th><th>Win %</th><th>Avg R</th><th>PnL $</th><th>% of PnL</th><th>% of Capital</th>
+        <th>Rank</th><th>Trades</th><th>Win %</th><th>Avg R</th><th>Realized $</th><th>Open $</th><th>% of PnL</th><th>% of Capital</th>
       </tr></thead><tbody></tbody></table>
       <div id="rankRolling" style="margin-top:10px;color:var(--muted);font-size:12px"></div>
     </div>
@@ -325,6 +325,7 @@ function renderRank(){
     <td>${r.win_rate!=null?r.win_rate.toFixed(0)+'%':'\u2014'}</td>
     <td class="${cls(r.avg_R)}">${r.avg_R!=null?(r.avg_R>=0?'+':'')+r.avg_R.toFixed(2)+'R':'\u2014'}</td>
     <td class="${cls(r.total_pnl)}">${money(r.total_pnl,true)}</td>
+    <td class="${cls(r.open_pnl)}">${r.open_pnl!=null?money(r.open_pnl,true):'\u2014'}</td>
     <td>${r.pnl_share!=null?r.pnl_share.toFixed(0)+'%':'\u2014'}</td>
     <td>${r.capital_share!=null?r.capital_share.toFixed(0)+'%':'\u2014'}</td></tr>`).join('');
   const ro=rk.rolling||{}, fmt=x=>x==null?'\u2014':(x>=0?'+':'')+x.toFixed(2)+'R';

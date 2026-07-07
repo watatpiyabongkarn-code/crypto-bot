@@ -79,6 +79,7 @@ def build_dashboard_data(state, rep=None, prices=None) -> dict:
                        for k, v in row.items()}
                    for c, row in pc.iterrows()} if not pc.empty else {}),
         trends=(rep or {}).get('trends', {}),
+        rank=A.rank_metrics(state),
         prices={c: round(prices.get(c), 6) for c in strategy.COINS if c in prices},
     )
     return _clean_json(_d)

@@ -71,7 +71,7 @@ def _close(state, key, px, reason, ts):
     pnl=d*(px-p['entry'])*p['size']-px*p['size']*TAKER_FEE; state['cash']+=pnl
     tr=dict(book=p['book'],coin=p['coin'],direction='long' if d>0 else 'short',
         entry_ts=p['entry_ts'],exit_ts=ts,entry_px=p['entry'],exit_px=px,
-        pnl=round(pnl+p['partial_pnl'],2),reason=reason,risk_usd=round(p['risk_usd'],2))
+        pnl=round(pnl+p['partial_pnl'],2),reason=reason,risk_usd=round(p['risk_usd'],2),rank=p.get('rank'))
     state['trades'].append(tr); return tr
 
 def process_book(state, book, data, prices, now_iso):
@@ -122,7 +122,7 @@ def process_book(state, book, data, prices, now_iso):
         if abs(entry-stop)<0.25*st['atr']: stop=entry-d*0.25*st['atr']
         stop_dist=d*(entry-stop)
         if stop_dist<=0: report['skipped'].append(dict(coin=coin,why='bad stop')); continue
-        rmult=1.3 if rank==0 else (1.0 if rank==1 else 0.8)
+        rmult=1.5 if rank==0 else (1.0 if rank==1 else 0.6)
         risk_frac=min(state['base_risk']*dmult*rmult, 8*state['base_risk']-open_risk)
         if risk_frac<=0: report['skipped'].append(dict(coin=coin,why='heat cap / breaker')); continue
         size=eq*risk_frac/stop_dist
@@ -132,7 +132,7 @@ def process_book(state, book, data, prices, now_iso):
         state['cash']-=entry*size*TAKER_FEE; open_risk+=size*stop_dist/eq; open_notional+=size*entry/eq
         state['positions'][f'{book}:{coin}']=dict(book=book,coin=coin,dir=d,entry=entry,entry_ts=now_iso,
             size=size,size0=size,stop=stop,atr0=st['atr'],best=entry,partial_done=False,partial_pnl=0.0,
-            bars=0,last_px=entry,risk_usd=eq*risk_frac)
+            bars=0,last_px=entry,risk_usd=eq*risk_frac,rank=rank)
         report['entries'].append(dict(coin=coin,dir='LONG' if d>0 else 'SHORT',px=round(entry,6),
             stop=round(stop,6),size=round(size,6),notional=round(size*entry,2),risk=round(eq*risk_frac,2),rank=rank+1))
     eq=mark_equity(state,prices); state['equity_history'].append([now_iso,round(eq,2)]); state['last_update']=now_iso

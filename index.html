@@ -73,6 +73,7 @@
     <div class="tab" data-t="positions">Positions</div>
     <div class="tab" data-t="trades">Trades</div>
     <div class="tab" data-t="coins">By Coin</div>
+    <div class="tab" data-t="rank">By Rank</div>
   </div>
 
   <!-- OVERVIEW -->
@@ -135,6 +136,22 @@
     </div>
   </div>
 
+  <div class="tabview hidden" data-v="rank">
+    <div class="panel"><h2>Conviction Rank &mdash; live monitoring</h2>
+      <p style="color:var(--muted);font-size:12px;margin:4px 0 10px">
+        The bot sizes bigger on the top momentum-ranked signal (1.5&times;) and smaller on weak ones (0.6&times;).
+        This tracks whether rank&nbsp;#1 keeps outperforming on new trades. Backtest reference expectancy:
+        <b>#1 +0.48R &middot; #2 +0.35R &middot; #3 +0.12R &middot; #4+ &minus;0.11R</b>.
+        Populates as new (post-upgrade) trades close.</p>
+      <div id="rankEmpty" class="hidden" style="color:var(--muted);padding:10px">
+        No rank-tagged trades yet &mdash; this begins collecting from the next closed trade.</div>
+      <table id="rankTable"><thead><tr>
+        <th>Rank</th><th>Trades</th><th>Win %</th><th>Avg R</th><th>PnL $</th><th>% of PnL</th><th>% of Capital</th>
+      </tr></thead><tbody></tbody></table>
+      <div id="rankRolling" style="margin-top:10px;color:var(--muted);font-size:12px"></div>
+    </div>
+  </div>
+
   <div class="footer">v14 paper trading · data refreshed daily by GitHub Actions · not financial advice</div>
 </div>
 
@@ -184,7 +201,7 @@ function render(){
     `<span class="trend ${v==='BULL'?'bull':'bear'}">${v==='BULL'?'🟢':'🔴'} ${k}</span>`).join('')||'<span class="mut">n/a</span>';
 
   renderCharts();
-  renderPerf(); renderRisk(); renderPositions(); renderTrades(); renderCoins();
+  renderPerf(); renderRisk(); renderPositions(); renderTrades(); renderCoins(); renderRank();
 }
 
 function lineChart(id,series,color,fill,pctAxis){
@@ -298,6 +315,22 @@ function renderCoins(){
   const byPnl=[...arr].sort((a,b)=>b.pnl-a.pnl);
   barChart('coinPnlChart',byPnl.map(c=>c.coin),byPnl.map(c=>c.pnl),false);
   barChart('coinWrChart',arr.map(c=>c.coin),arr.map(c=>c.win_rate||0),true);
+}
+
+function renderRank(){
+  const rk=DATA.rank||{by_rank:[],rolling:{},tracked:0};
+  $('#rankEmpty').classList.toggle('hidden',!!rk.tracked);
+  $('#rankTable tbody').innerHTML=(rk.by_rank||[]).map(r=>`<tr>
+    <td>#${r.rank}${r.rank>=4?'+':''}</td><td>${r.trades}</td>
+    <td>${r.win_rate!=null?r.win_rate.toFixed(0)+'%':'\u2014'}</td>
+    <td class="${cls(r.avg_R)}">${r.avg_R!=null?(r.avg_R>=0?'+':'')+r.avg_R.toFixed(2)+'R':'\u2014'}</td>
+    <td class="${cls(r.total_pnl)}">${money(r.total_pnl,true)}</td>
+    <td>${r.pnl_share!=null?r.pnl_share.toFixed(0)+'%':'\u2014'}</td>
+    <td>${r.capital_share!=null?r.capital_share.toFixed(0)+'%':'\u2014'}</td></tr>`).join('');
+  const ro=rk.rolling||{}, fmt=x=>x==null?'\u2014':(x>=0?'+':'')+x.toFixed(2)+'R';
+  $('#rankRolling').innerHTML='Rolling top-rank (#1) expectancy \u2014 '
+    +`3-month: <b>${fmt(ro['3m']&&ro['3m'].top_avg_R)}</b> (${ro['3m']?ro['3m'].top_trades:0} trades) \u00b7 `
+    +`6-month: <b>${fmt(ro['6m']&&ro['6m'].top_avg_R)}</b> (${ro['6m']?ro['6m'].top_trades:0} trades)`;
 }
 
 // tab switching

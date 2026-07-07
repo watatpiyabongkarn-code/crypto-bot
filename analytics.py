@@ -330,3 +330,36 @@ def rolling_winrate(state, window=10) -> pd.Series:
         return pd.Series(dtype=float)
     s = (df.sort_values('exit_dt').set_index('exit_dt').pnl > 0).astype(float)
     return s.rolling(window, min_periods=3).mean() * 100
+
+
+def rank_metrics(state) -> dict:
+    """Live conviction-rank monitoring. Uses trades that carry a 'rank' field
+    (momentum rank at entry, 0=top). Backfilled trades without a rank are
+    ignored, so this populates going forward. R = pnl / risk_usd."""
+    tr = [t for t in state.get('trades', []) if t.get('rank') is not None]
+    out = dict(tracked=len(tr), by_rank=[], rolling={})
+    if not tr:
+        return out
+    df = pd.DataFrame(tr)
+    df['R'] = df['pnl'] / df['risk_usd'].replace(0, np.nan)
+    df['rk'] = df['rank'].clip(upper=3)
+    df['exit_dt'] = pd.to_datetime(df['exit_ts'], utc=True, errors='coerce')
+    tot = df['pnl'].sum()
+    cap = df.groupby('rk')['risk_usd'].sum().sum()
+    for rk, g in df.groupby('rk'):
+        out['by_rank'].append(dict(
+            rank=int(rk) + 1,
+            trades=len(g),
+            win_rate=round((g['pnl'] > 0).mean() * 100, 1),
+            avg_R=round(float(g['R'].mean()), 3) if g['R'].notna().any() else None,
+            total_pnl=round(float(g['pnl'].sum()), 2),
+            pnl_share=round(float(g['pnl'].sum()) / tot * 100, 1) if tot else None,
+            capital_share=round(float(g['risk_usd'].sum()) / cap * 100, 1) if cap else None))
+    for win, lbl in [(90, '3m'), (180, '6m')]:
+        cutoff = df['exit_dt'].max() - pd.Timedelta(days=win)
+        recent = df[df['exit_dt'] >= cutoff]
+        top = recent[recent['rk'] == 0]
+        out['rolling'][lbl] = dict(
+            top_avg_R=round(float(top['R'].mean()), 3) if len(top) and top['R'].notna().any() else None,
+            top_trades=len(top), all_trades=len(recent))
+    return out

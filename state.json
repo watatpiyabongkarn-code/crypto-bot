@@ -1,7 +1,7 @@
 {
  "version": 14,
  "account_start": 10000,
- "cash": 28198.183305152717,
+ "cash": 28195.32414798467,
  "base_risk": 0.015,
  "paused": false,
  "positions": {
@@ -35,8 +35,8 @@
    "best": 41.19,
    "partial_done": true,
    "partial_pnl": 73.14980208565574,
-   "bars": 25,
-   "last_px": 44.23,
+   "bars": 26,
+   "last_px": 44.05,
    "risk_usd": 171.81555892227172
   },
   "0:DOGE": {
@@ -103,8 +103,8 @@
    "best": 58624.71,
    "partial_done": true,
    "partial_pnl": 84.65870008156506,
-   "bars": 22,
-   "last_px": 63344.3,
+   "bars": 23,
+   "last_px": 63061.2,
    "risk_usd": 150.9895035169862
   },
   "0:ADA": {
@@ -137,8 +137,8 @@
    "best": 0.1438,
    "partial_done": true,
    "partial_pnl": 178.69737068050438,
-   "bars": 20,
-   "last_px": 0.1808,
+   "bars": 21,
+   "last_px": 0.1791,
    "risk_usd": 201.11629168231764
   },
   "1:SOL": {
@@ -154,8 +154,8 @@
    "best": 81.93,
    "partial_done": false,
    "partial_pnl": 0.0,
-   "bars": 2,
-   "last_px": 81.66,
+   "bars": 3,
+   "last_px": 81.33,
    "risk_usd": 586.2594862710002
   },
   "1:ETH": {
@@ -171,8 +171,8 @@
    "best": 1799.41,
    "partial_done": false,
    "partial_pnl": 0.0,
-   "bars": 1,
-   "last_px": 1780.03,
+   "bars": 2,
+   "last_px": 1769.01,
    "risk_usd": 579.831022186785
   }
  },
@@ -7492,6 +7492,10 @@
   [
    "2026-07-07T07:22:18.564594+00:00",
    29732.29
+  ],
+  [
+   "2026-07-07T08:35:28.637874+00:00",
+   29728.61
   ]
  ],
  "trades": [
@@ -14480,5 +14484,5 @@
    "risk_usd": 240.09
   }
  ],
- "last_update": "2026-07-07T07:22:18.564594+00:00"
+ "last_update": "2026-07-07T08:35:28.637874+00:00"
 }

@@ -164,33 +164,30 @@ def compute_stats(state):
 
 def fetch_all(limit=150):
     import ccxt
-    ex=ccxt.binance({'enableRateLimit':True}); data,prices={},{}
-    for coin in COINS:
-        raw=ex.fetch_ohlcv(f'{coin}/USDT','1d',limit=limit)
-        df=pd.DataFrame(raw,columns=['ts','open','high','low','close','volume'])
-        df['ts']=pd.to_datetime(df['ts'],unit='ms',utc=True); df=df.set_index('ts')[['open','high','low','close']].astype(float)
-        now=pd.Timestamp.now(tz='UTC').normalize(); prices[coin]=float(df['close'].iloc[-1]); data[coin]=df[df.index<now]
-    return data,prices
-
-
-def backfill(state_path, days=21, account=10_000.0, base_risk=None):
-    """Rebuild state as if the bot had been running for the past `days` days.
-    Replays one daily update per day at historical open prices. RESETS state."""
-    data, prices = fetch_all(limit=days + 160)
-    state = default_state(account)
-    if base_risk is not None:
-        state['base_risk'] = base_risk
-    end = pd.Timestamp.now(tz='UTC').normalize()
-    day = end - pd.Timedelta(days=days)
-    while day < end:
-        dslice = {c: df[df.index < day] for c, df in data.items()}
-        pr = {}
-        for c, df in data.items():
-            nxt = df[df.index >= day]
-            pr[c] = float(nxt['open'].iloc[0]) if len(nxt) else float(df['close'].iloc[-1])
-        if all(len(d2) > 90 for d2 in dslice.values()):
-            daily_update(state, dslice, pr, day + pd.Timedelta(minutes=10))
-        day += pd.Timedelta(days=1)
-    daily_update(state, data, prices, pd.Timestamp.now(tz='UTC'))
-    save_state(state, state_path)
-    return state
+    # GitHub Actions runners use US/Azure IPs, which Binance 451-blocks
+    # ("restricted location"). Try exchanges in order until one serves every
+    # coin. Binance stays first so local runs match the Binance-built backfill;
+    # the others are fallbacks that GitHub's runners can reach.
+    EXCHANGES=['binance','kucoin','okx','bybit','coinbase']
+    last_err=None
+    for name in EXCHANGES:
+        try:
+            ex=getattr(ccxt,name)({'enableRateLimit':True}); data,prices={},{}
+            for coin in COINS:
+                raw=None
+                for quote in ('USDT','USD'):
+                    try:
+                        raw=ex.fetch_ohlcv(f'{coin}/{quote}','1d',limit=limit)
+                        if raw and len(raw)>=100: break
+                        raw=None
+                    except Exception as e:
+                        last_err=e; raw=None
+                if not raw or len(raw)<100:
+                    raise RuntimeError(f'insufficient data for {coin}')
+                df=pd.DataFrame(raw,columns=['ts','open','high','low','close','volume'])
+                df['ts']=pd.to_datetime(df['ts'],unit='ms',utc=True); df=df.set_index('ts')[['open','high','low','close']].astype(float)
+                now=pd.Timestamp.now(tz='UTC').normalize(); prices[coin]=float(df['close'].iloc[-1]); data[coin]=df[df.index<now]
+            print(f'[fetch_all] data source: {name}')
+            return data,prices
+        except Exception as e:
+            last_err=e; print('[fetch_all] '+name+' unavailable: '+str(e)[:80]+'; trying next')

@@ -122,7 +122,7 @@ def process_book(state, book, data, prices, now_iso):
         if abs(entry-stop)<0.25*st['atr']: stop=entry-d*0.25*st['atr']
         stop_dist=d*(entry-stop)
         if stop_dist<=0: report['skipped'].append(dict(coin=coin,why='bad stop')); continue
-        rmult=1.5 if rank==0 else (1.0 if rank==1 else 0.6)
+        rmult=1.4 if rank==0 else (1.0 if rank==1 else 0.7)
         risk_frac=min(state['base_risk']*dmult*rmult, 8*state['base_risk']-open_risk)
         if risk_frac<=0: report['skipped'].append(dict(coin=coin,why='heat cap / breaker')); continue
         size=eq*risk_frac/stop_dist

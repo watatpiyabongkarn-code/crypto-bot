@@ -61,7 +61,8 @@ def build_dashboard_data(state, rep=None, prices=None) -> dict:
     pc = A.per_coin(state)
 
     def ser(s):
-        return [[d.strftime('%Y-%m-%d'), round(float(v), 4)] for d, v in s.items()] if len(s) else []
+        return [[d.strftime('%Y-%m-%d'), round(float(v), 4)]
+                for d, v in s.items() if pd.notna(d) and pd.notna(v)] if len(s) else []
 
     _d = dict(
         updated=datetime.now(timezone.utc).isoformat(),

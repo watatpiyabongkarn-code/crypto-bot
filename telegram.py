@@ -59,7 +59,8 @@ def send_photo(png: bytes, caption: str = ''):
 
 
 def format_report(state, rep: dict, metrics: dict, dashboard_url: str = '') -> str:
-    """Compact HTML message for Telegram (mobile-first)."""
+    """Compact HTML message for Telegram (mobile-first). Presentation only —
+    every value is read from precomputed analytics; no trading logic here."""
     pm = metrics['portfolio']
     rm = metrics['risk']
 
@@ -69,40 +70,66 @@ def format_report(state, rep: dict, metrics: dict, dashboard_url: str = '') -> s
         s = f"${abs(v):,.0f}"
         return (('+' if v >= 0 else '-') + s) if sign else (('-' + s) if v < 0 else s)
 
-    def pct(v):
-        return 'n/a' if v is None else f"{'+' if v >= 0 else ''}{v*100:.1f}%"
+    def pct(v, dp=1):
+        return 'n/a' if v is None else f"{'+' if v >= 0 else ''}{v*100:.{dp}f}%"
 
-    today = pm.get('today_pnl')
-    lines = [
-        '📅 <b>Daily Report</b>',
-        '━━━━━━━━━━━━━━',
-        f"💼 <b>Equity</b>  {money(pm['equity'])}  ({pct(pm['total_return'])})",
-        f"📈 Today {money(today, sign=True)} · Wk {pct(pm['weekly_return'])} · Mo {pct(pm['monthly_return'])}",
-        f"📌 {rm['n_positions']} positions · risk {rm['portfolio_risk_pct']:.1f}% · cash {money(rm['cash'])}"
-        if rm['portfolio_risk_pct'] is not None else f"📌 {rm['n_positions']} positions",
+    def row(label, val):
+        return f"{label:<11}{val}"
+
+    equity = pm.get('equity')
+    expo = rm.get('exposure_pct')
+    invested = (equity * expo / 100) if (equity is not None and expo is not None) else None
+    npos = rm.get('n_positions', 0) or 0
+    dirs = [p['dir'] for p in state.get('positions', {}).values()]
+    longs, shorts = sum(1 for d in dirs if d > 0), sum(1 for d in dirs if d < 0)
+
+    port = [
+        '💼 PORTFOLIO',
+        row('Equity', f"{money(equity)} ({pct(pm.get('total_return'))})"),
+        row('Cash', money(rm.get('cash'))),
+        row('Invested', f"{money(invested)} ({(expo or 0):.1f}%)" if invested is not None else 'n/a'),
+        row('Positions', f"{npos}" + (f" ({longs}L / {shorts}S)" if npos else '')),
+        row('Risk Used', f"{rm['portfolio_risk_pct']:.1f}%" if rm.get('portfolio_risk_pct') is not None else 'n/a'),
     ]
+    perf = [
+        '',
+        '📈 PERFORMANCE',
+        row('Today', money(pm.get('today_pnl'), sign=True)
+            + (f" ({pct(pm.get('daily_return'), 2)})" if pm.get('daily_return') is not None else '')),
+        row('Week', pct(pm.get('weekly_return'))),
+        row('Month', pct(pm.get('monthly_return'))),
+        row('Realized', money(pm.get('realized_pnl'), sign=True)),
+        row('Unrealized', money(pm.get('unrealized_pnl'), sign=True)),
+    ]
+    cdd = pm.get('current_dd')
+    if cdd is not None and cdd < -0.001:
+        perf.append(row('Drawdown', f"{cdd*100:.1f}% from ATH"))
+
+    date = (state.get('last_update') or '')[:10]
+    lines = [f"📅 <b>Daily Report</b>{(' · ' + date) if date else ''}",
+             '<pre>' + '\n'.join(port + perf) + '</pre>']
+
     entries, closed = rep.get('entries', []), rep.get('closed', [])
     if entries or closed:
-        lines.append('')
         if entries:
             lines.append('🚀 <b>Opened</b>')
             for x in entries[:6]:
-                lines.append(f"  {x['coin']} {x['dir']} @ {x['px']} · risk {money(x['risk'])}")
+                lines.append(f"  {x['coin']} {x['dir']} @ {x['px']} · pos {money(x.get('notional'))} · risk {money(x.get('risk'))}")
         if closed:
             lines.append('🏁 <b>Closed</b>')
             for t in closed[:6]:
                 lines.append(f"  {t['coin']} {t['direction']} · {money(t['pnl'], sign=True)} ({t['reason']})")
     else:
-        lines.append('\n<i>No trades today — holding.</i>')
-    # market
+        lines.append('<i>No trades today — holding.</i>')
+
     trends = rep.get('trends', {})
     if trends:
         bulls = sum(1 for v in trends.values() if v == 'BULL')
         regime = 'Risk On 🟢' if bulls > len(trends)/2 else ('Risk Off 🔴' if bulls < len(trends)/2 else 'Mixed 🟡')
-        lines.append(f"\n🌐 Market: <b>{regime}</b> ({bulls}/{len(trends)} bull)")
+        lines.append(f"🌐 Market: <b>{regime}</b> ({bulls}/{len(trends)} bull)")
     if dashboard_url:
-        lines.append(f"\n📊 <a href=\"{dashboard_url}\">Open full dashboard →</a>")
-    lines.append('\n<i>v14 paper trading · not financial advice</i>')
+        lines.append(f"📊 <a href=\"{dashboard_url}\">Open full dashboard →</a>")
+    lines.append('<i>v14 paper trading · not financial advice</i>')
     return '\n'.join(lines)
 
 

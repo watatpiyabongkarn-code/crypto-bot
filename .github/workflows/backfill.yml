@@ -1,0 +1,42 @@
+name: Refresh backfill (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Days of history to replay (1826 = 5 years)'
+        default: '1826'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-run
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Run backfill (rebuilds state.json with current strategy)
+        env:
+          WEB_DIR: "."
+        run: python backfill.py ${{ inputs.days }}
+
+      - name: Commit refreshed state + dashboard
+        run: |
+          git config user.name  "v14-bot"
+          git config user.email "actions@github.com"
+          git add state.json data.json equity.png
+          git diff --staged --quiet || git commit -m "refresh backfill (conviction 1.5 + rank)"
+          git push

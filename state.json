@@ -1,7 +1,7 @@
 {
  "version": 14,
  "account_start": 10000.0,
- "cash": 34196.551840692984,
+ "cash": 34205.896589389515,
  "base_risk": 0.015,
  "paused": false,
  "positions": {
@@ -36,8 +36,8 @@
    "best": 89.35,
    "partial_done": true,
    "partial_pnl": 370.14197266678747,
-   "bars": 14,
-   "last_px": 89.76,
+   "bars": 15,
+   "last_px": 89.24,
    "risk_usd": 719.5885362555028,
    "rank": 0
   },
@@ -54,8 +54,8 @@
    "best": 0.1809,
    "partial_done": true,
    "partial_pnl": 314.0527654070254,
-   "bars": 12,
-   "last_px": 0.1845,
+   "bars": 13,
+   "last_px": 0.1803,
    "risk_usd": 729.3416154317962,
    "rank": 0
   },
@@ -90,8 +90,8 @@
    "best": 0.07121,
    "partial_done": false,
    "partial_pnl": 0.0,
-   "bars": 7,
-   "last_px": 0.07168,
+   "bars": 8,
+   "last_px": 0.07125,
    "risk_usd": 718.8439477421509,
    "rank": 0
   },
@@ -126,8 +126,8 @@
    "best": 2238.01,
    "partial_done": false,
    "partial_pnl": 0.0,
-   "bars": 6,
-   "last_px": 2226.51,
+   "bars": 7,
+   "last_px": 2234.67,
    "risk_usd": 728.9539685194246,
    "rank": 0
   },
@@ -141,11 +141,11 @@
    "size0": 1134.172444007856,
    "stop": 1.2022,
    "atr0": 0.10981104320787603,
-   "best": 0.9092,
+   "best": 0.8987,
    "partial_done": false,
    "partial_pnl": 0.0,
-   "bars": 5,
-   "last_px": 0.9231,
+   "bars": 6,
+   "last_px": 0.8973,
    "risk_usd": 739.4940100400217,
    "rank": 0
   },
@@ -7986,6 +7986,10 @@
   [
    "2026-11-07T05:52:40.277905+00:00",
    37575.06
+  ],
+  [
+   "2026-11-08T05:55:05.406097+00:00",
+   37912.94
   ]
  ],
  "trades": [
@@ -16336,5 +16340,5 @@
    "rank": 1
   }
  ],
- "last_update": "2026-11-07T05:52:40.277905+00:00"
+ "last_update": "2026-11-08T05:55:05.406097+00:00"
 }
